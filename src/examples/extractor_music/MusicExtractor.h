@@ -81,6 +81,7 @@ using namespace streaming;
   void computeSVMDescriptors(Pool& pool);
   void loadSVMModels();
   void outputToFile(Pool& pool, const string& outputFilename);
+  void computeSegments();
 
  };
 

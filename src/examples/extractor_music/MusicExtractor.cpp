@@ -134,6 +134,8 @@ int MusicExtractor::compute(const string& audioFilename){
   cerr << "Process step: Compute aggregation"<<endl;
   this->stats = this->computeAggregation(results);
 
+  computeSegments();
+
   // pre-trained classifiers are only available in branches devoted for that
   // (eg: 2.0.1)
   if (options.value<Real>("highlevel.compute")) {
@@ -490,6 +492,15 @@ void MusicExtractor::setExtractorDefaultOptions() {
   options.set("tonal.windowType", "blackmanharris62");
   options.set("tonal.silentFrames", silentFrames);
 
+  // segmentation
+  options.set("segmentation.minimumSegmentsLength", 10);
+  options.set("segmentation.size1", 300);
+  options.set("segmentation.inc1", 60);
+  options.set("segmentation.size2", 200);
+  options.set("segmentation.inc2", 20);
+  options.set("segmentation.cpw", 1.5f);
+
+
   // stats
   const char* statsArray[] = { "mean", "var", "median", "min", "max", "dmean", "dmean2", "dvar", "dvar2" };
   const char* mfccStatsArray[] = { "mean", "cov", "icov" };
@@ -571,4 +582,44 @@ void MusicExtractor::mergeValues(Pool &pool) {
     keys[i].replace(0, mergeKeyPrefix.size()+1, "");
     pool.set(keys[i], options.value<string>(mergeKeyPrefix + "." + keys[i]));
   }
+}
+
+void MusicExtractor::computeSegments() {
+
+	int minimumSegmentsLength = int(options.value<Real>("segmentation.minimumSegmentsLength"));
+	int size1 = int(options.value<Real>("segmentation.size1"));
+	int inc1 = int(options.value<Real>("segmentation.inc1"));
+	int size2 = int(options.value<Real>("segmentation.size2"));
+	int inc2 = int(options.value<Real>("segmentation.inc2"));
+	int cpw = int(options.value<Real>("segmentation.cpw"));
+
+	vector<vector<Real> > features;
+	try {
+		features = results.value<vector<vector<Real> > >("lowlevel.mfcc");
+	}
+	catch (const EssentiaException&) {
+		cerr << "Error: could not find MFCC features in low level pool. Aborting..." << endl;
+		exit(3);
+	}
+
+	TNT::Array2D<Real> featuresArray(features[0].size(), features.size());
+	for (int frame = 0; frame < int(features.size()); ++frame) {
+		for (int mfcc = 0; mfcc < int(features[0].size()); ++mfcc) {
+			featuresArray[mfcc][frame] = features[frame][mfcc];
+		}
+	}
+	// only BIC segmentation available
+	standard::Algorithm* sbic = standard::AlgorithmFactory::create("SBic", "size1", size1, "inc1", inc1,
+		"size2", size2, "inc2", inc2, "cpw", cpw,
+		"minLength", minimumSegmentsLength);
+	vector<Real> segments;
+	sbic->input("features").set(featuresArray);
+	sbic->output("segmentation").set(segments);
+	sbic->compute();
+	Real analysisSampleRate = options.value<Real>("analysisSampleRate");
+	Real step = options.value<Real>("lowlevel.hopSize");
+	for (int i = 0; i<int(segments.size()); ++i) {
+		segments[i] *= step / analysisSampleRate;
+		results.add("segmentation.timestamps", segments[i]);
+	}
 }
