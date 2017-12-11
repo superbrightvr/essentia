@@ -61,11 +61,11 @@ void HPCP::configure() {
 
   _minFrequency = parameter("minFrequency").toReal();
   _maxFrequency = parameter("maxFrequency").toReal();
-
+/*
   if ((_maxFrequency - _minFrequency) < 200.0) {
     throw EssentiaException("HPCP: Minimum and maximum frequencies are too close");
   }
-
+  */
   _splitFrequency = parameter("bandSplitFrequency").toReal();
   _bandPreset = parameter("bandPreset").toBool();
 

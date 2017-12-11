@@ -74,11 +74,19 @@ int MusicExtractor::compute(const string& audioFilename){
                                     "replayGain", replayGain,
                                     "downmix",    downmix);
 
+  Algorithm* lowpass = factory.create("LowPass",
+									  "cutoffFrequency", (float)options.value<Real>("lowCutoffFrequency"));
+  Algorithm* hipass = factory.create("HighPass",
+									  "cutoffFrequency", (float)options.value<Real>("highCutoffFrequency"));
+  loader->output("audio") >> lowpass->input("signal");
+  lowpass->output("signal") >> hipass->input("signal");
+
+
   MusicLowlevelDescriptors *lowlevel = new MusicLowlevelDescriptors(options);
   MusicRhythmDescriptors *rhythm = new MusicRhythmDescriptors(options);
   MusicTonalDescriptors *tonal = new MusicTonalDescriptors(options);
 
-  SourceBase& source = loader->output("audio");
+  SourceBase& source = hipass->output("signal");
   lowlevel->createNetworkNeqLoud(source, results);
   lowlevel->createNetworkEqLoud(source, results);
   lowlevel->createNetworkLoudness(source, results);
@@ -100,7 +108,14 @@ int MusicExtractor::compute(const string& audioFilename){
                                        "replayGain", replayGain,
                                        "downmix",    downmix);
 
-  SourceBase& source_2 = loader_2->output("audio");
+  Algorithm* lowpass2 = factory.create("LowPass",
+	  "cutoffFrequency", (float)options.value<Real>("lowCutoffFrequency"));
+  Algorithm* hipass2 = factory.create("LowPass",
+	  "cutoffFrequency", (float)options.value<Real>("highCutoffFrequency"));
+  loader_2->output("audio") >> lowpass2->input("signal");
+  lowpass2->output("signal") >> hipass2->input("signal");
+
+  SourceBase& source_2 = hipass2->output("signal");
   rhythm->createNetworkBeatsLoudness(source_2, results);  // requires 'beat_positions'
   tonal->createNetwork(source_2, results);                // requires 'tuning frequency'
 

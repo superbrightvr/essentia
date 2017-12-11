@@ -61,10 +61,13 @@ void  MusicRhythmDescriptors::createNetwork(SourceBase& source, Pool& pool){
   //       the algorithm that is used is rather outdated, onset times can be 
   //       inaccurate, however, onset_rate is still very informative for many 
   //       tasks 
-  Algorithm* onset = factory.create("OnsetRate");
+  Algorithm* onset = factory.create("SuperFluxExtractor",
+									"ratioThreshold", (float)options.value<Real>("rhythm.onsetRatioThreshold"),
+									"threshold", (float)options.value<Real>("rhythm.onsetThreshold")
+									);
   source                      >> onset->input("signal");
-  onset->output("onsetTimes") >> NOWHERE;
-  onset->output("onsetRate")  >> PC(pool, nameSpace + "onset_rate");
+  onset->output("onsets") >> PC(pool, nameSpace + "onset_times");
+  //onset->output("onsetRate")  >> PC(pool, nameSpace + "onset_rate");
 
   // Danceability
   Algorithm* danceability = factory.create("Danceability");

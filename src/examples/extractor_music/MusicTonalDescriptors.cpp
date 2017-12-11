@@ -67,6 +67,10 @@ void MusicTonalDescriptors::createNetwork(SourceBase& source, Pool& pool){
   string silentFrames = options.value<string>("tonal.silentFrames");
   string windowType = options.value<string>("tonal.windowType");
   int zeroPadding = int(options.value<Real>("tonal.zeroPadding"));
+  float minFrequency = float(options.value<Real>("tonal.minFrequency"));
+  float maxFrequency = float(options.value<Real>("tonal.maxFrequency"));
+  float bandSplitFrequency = float(options.value<Real>("tonal.bandSplitFrequency"));
+  bool bandPreset = bool(options.value<Real>("tonal.bandPreset"));
 
   Real tuningFreq = pool.value<vector<Real> >(nameSpace + "tuning_frequency").back();
 
@@ -83,15 +87,15 @@ void MusicTonalDescriptors::createNetwork(SourceBase& source, Pool& pool){
   Algorithm* peaks = factory.create("SpectralPeaks",
                                     "maxPeaks", 10000,
                                     "magnitudeThreshold", 0.00001,
-                                    "minFrequency", 40,
-                                    "maxFrequency", 5000,
+                                    "minFrequency", 50.0f,
+                                    "maxFrequency", 5000.0f,
                                     "orderBy", "magnitude");
   Algorithm* hpcp_key = factory.create("HPCP",
                                        "size", 36,
                                        "referenceFrequency", tuningFreq,
                                        "bandPreset", false,
-                                       "minFrequency", 40.0,
-                                       "maxFrequency", 5000.0,
+                                       "minFrequency", minFrequency,
+                                       "maxFrequency", maxFrequency,
                                        "weightType", "squaredCosine",
                                        "nonLinear", false,
                                        "windowSize", 4.0/3.0);
@@ -106,10 +110,10 @@ void MusicTonalDescriptors::createNetwork(SourceBase& source, Pool& pool){
                                          "size", 36,
                                          "referenceFrequency", tuningFreq,
                                          "harmonics", 8,
-                                         "bandPreset", true,
-                                         "minFrequency", 40.0,
-                                         "maxFrequency", 5000.0,
-                                         "bandSplitFrequency", 500.0,
+                                         "bandPreset", bandPreset,
+                                         "minFrequency", minFrequency,
+                                         "maxFrequency", maxFrequency,
+                                         "bandSplitFrequency", bandSplitFrequency,
                                          "weightType", "cosine",
                                          "nonLinear", true,
                                          "windowSize", 0.5);
@@ -136,7 +140,7 @@ void MusicTonalDescriptors::createNetwork(SourceBase& source, Pool& pool){
   schord->output("strength")   >> PC(pool, nameSpace + "chords_strength");
   // TODO: Chords progression has low practical sense and is based on a very simple algorithm prone to errors.
   // We need to have better algorithm first to include this descriptor.
-  // schord->output("chords") >> PC(pool, nameSpace + "chords_progression");
+  schord->output("chords") >> PC(pool, nameSpace + "chords_progression");
   
   schord->output("chords")     >> schords_desc->input("chords");
   skey->output("key")          >> schords_desc->input("key");
